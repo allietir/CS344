@@ -113,7 +113,7 @@ bool CanAddConnectionFrom(struct Room *x)
 // Returns true if a connection from Room x to Room y already exists, false otherwise
 bool ConnectionAlreadyExists(struct Room *x, struct Room *y)
 {
-
+	
 }
 
 // Connects Rooms x and y together, does not check if this connection is valid
@@ -123,9 +123,14 @@ void ConnectRoom(Room x, Room y)
 }
 
 // Returns true if Rooms x and y are the same Room, false otherwise
-bool IsSameRoom(Room x, Room y) 
+bool IsSameRoom(struct Room *x, struct Room *y) 
 {
-
+	//I think checking id is safest since it should be designed to be unique
+	if (x->id == y->id)
+	{
+		return true;
+	}
+	return false;
 }
 
 void RoomInit()
