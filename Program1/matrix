@@ -1,0 +1,492 @@
+#!/bin/bash
+
+# Program 1: matrices
+# Author: Alexander Tir
+# Course: CS_344_400_F2019
+# Last Modified:
+# Description: This script calculates basic matrix operations using
+# input from either a file or stdin. This script is able to
+# print the dimensions of a matrix, transpose a matrix, calculate 
+# the mean vector of a matrix, add two matrices, and multiply two matrices.
+
+#----------------------------------------------------------
+# Function:		main()
+# Description:	At the end of the script, this function will be called using
+# the arguments that were passed in. There is an if statement for each
+# matrix operation. This will also check that input files are readable.
+# Some of this can be condensed for certain operations that use the same number
+# of arguments, but I separated them for personal clarity.
+#----------------------------------------------------------
+main()
+{
+	#if dims function is called
+	if [ $1 == "dims" ]
+	then
+		#check if there are the correct number of arguments
+		if (("$#" > 2 ))
+		then
+			#redirect to stderr
+			echo "Too many arguments." 1>&2
+			exit 1
+		fi
+
+		datafilepath="datafile$$"
+		#check for data via std
+		if [ "$#" = "1" ]
+		then
+			cat > "$datafilepath"
+		#check for data via file, will be 2nd argument
+		elif [ "$#" = "2" ]
+			#must check if file is valid
+			if [ ! -r "$2" ]
+			then
+				echo "File input invalid." 1>&2
+				exit 1
+			fi
+		then
+			datafilepath=$2
+		fi
+
+		#call dims
+		dims $datafilepath
+		exit 0
+	fi
+
+	#if transpose function is called
+	if [ $1 == "transpose" ]
+	then
+		#check if there are the correct number of arguments
+		if (("$#" > 2 ))
+		then
+			#redirect to stderr
+			echo "Too many arguments." 1>&2
+			exit 1
+		fi
+
+		datafilepath="datafile$$"
+		#check for data via std
+		if [ "$#" = "1" ]
+		then
+			cat > "$datafilepath"
+		#check for data via file, will be 2nd argument
+		elif [ "$#" = "2" ]
+			#must check if file is valid
+			if [ ! -r "$2" ]
+			then
+				echo "File input invalid." 1>&2
+				exit 1
+			fi
+		then
+			datafilepath=$2
+		fi
+
+		#call transpose
+		transpose $datafilepath
+	fi
+
+	#if mean function is called
+	if [ $1 == "mean" ]
+	then
+		#check if there are the correct number of arguments
+		if (("$#" > 2 ))
+		then
+			#redirect to stderr
+			echo "Too many arguments." 1>&2
+			exit 1
+		fi
+
+		datafilepath="datafile$$"
+		#check for data via std
+		if [ "$#" = "1" ]
+		then
+			cat > "$datafilepath"
+		#check for data via file, will be 2nd argument
+		elif [ "$#" = "2" ]
+			#must check if file is valid
+			if ! [ -r "$2" ]
+			then
+				echo "File input invalid." 1>&2
+				exit 1
+			fi
+		then
+			datafilepath=$2
+		fi
+
+		#call mean
+		mean $datafilepath
+	fi
+
+	#if add function is called
+	if [ $1 == "add" ]
+	then
+		#check if there are the correct number of arguments
+		if (("$#" != 3 ))
+		then
+			#redirect to stderr
+			echo "Incorrect number of arguments." 1>&2
+			exit 1
+		fi
+
+		#check that files are valid
+		if ! [ -r "$2" ]
+		then
+			echo "A file input is invalid." 1>&2
+			exit 1
+		elif ! [ -r "$3" ]
+		then
+			echo "A file input is invalid." 1>&2
+			exit 1
+		fi
+
+		datafilepathone="datafileone$$"
+		datafilepathtwo="datafiletwo$$"
+
+		datafilepathone=$2
+		datafilepathtwo=$3
+
+		#call add
+		add $datafilepathone $datafilepathtwo
+		exit 0
+	fi
+
+	#if add function is called
+	if [ $1 == "multiply" ]
+	then
+		#check if there are the correct number of arguments
+		if (("$#" != 3 ))
+		then
+			#redirect to stderr
+			echo "Incorrect number of arguments." 1>&2
+			exit 1
+		fi
+
+		#check that files are valid
+		if ! [ -r "$2" ]
+		then
+			echo "A file input is invalid." 1>&2
+			exit 1
+		elif ! [ -r "$3" ]
+		then
+			echo "A file input is invalid." 1>&2
+			exit 1
+		fi
+
+		datafilepathone="datafileone$$"
+		datafilepathtwo="datafiletwo$$"
+
+		datafilepathone=$2
+		datafilepathtwo=$3
+
+		#call multiply
+		multiply $datafilepathone $datafilepathtwo
+	fi
+	
+	echo "Command invalid. Did you mean dims, transpose, mean, add, or multiply?" 1>&2
+	exit 1
+}
+
+
+#----------------------------------------------------------
+# Function:		dims()
+# Description:	Takes as input 1 matrix via stdin or a file and
+# outputs the dimensions of the matrix separated by a space.
+#----------------------------------------------------------
+dims()
+{
+	numRows=0
+    numCols=0
+
+    while read line
+    do
+    	numRows=$(expr $numRows + 1)
+
+    	#only use the first line read to count columns
+    	if [ $numRows == 1 ]
+    	then
+    		for col in $line
+    		do
+    			numCols=$(expr $numCols + 1)
+    		done
+    	fi
+
+	done <$1
+
+    echo "$numRows $numCols"
+    rm -f "datafile$$"
+    #exit 0
+}
+
+
+#----------------------------------------------------------
+# Function:		transpose()
+# Description:	Takes as input 1 matrix via stdin or a file,
+# transposes the matrix and outputs the resulting matrix.
+#----------------------------------------------------------
+transpose()
+{
+	#placeholders for data
+	tempCol="tempcolfile$$"
+	transFile="transposefile$$"
+	tempRow="temprowfile$$"
+
+	#The cut statement was found on stack overflow
+	#Here I am calling dims, piping the result into cut, and cutting the
+	#second space-delimited field, which is the number of columns. 
+	numCols=$( dims $1 | cut -d ' ' -f 2)
+
+	i=1
+	while [ $i -le $numCols ]
+	do
+		#cut a column
+		cut -f "$i" $1 > $tempCol
+
+		#convert column to row using the translate bash utility
+		tr -s '\n' '\t' < $tempCol > $tempRow
+
+		#remove trailing tabs, this tip was given to us
+		line=`cat $tempRow`
+		line=${line%?}
+
+		#append to transposed matrix file
+		echo "$line" >> $transFile
+
+		i=$(expr $i + 1)
+	done
+
+	cat $transFile
+
+	rm -f "temprowfile$$"
+	rm -f "tempcolfile$$"
+	rm -f "transposefile$$"
+	rm -f "datafile$$"
+	exit 0
+}
+
+#----------------------------------------------------------
+# Function:		mean()
+# Description:	Takes as input 1 matrix via stdin or a file
+# and outputs a 1 by X matrix where each element is the average
+# of each column in the input matrix.
+#----------------------------------------------------------
+mean()
+{
+	tempCol="tempcolfile$$"
+	tempMean="tempmeanfile$$"
+	tempRow="temprowfile$$"
+
+	#same as in transpose(), call dims to get the number of columns.
+	numCols=$( dims $1 | cut -d ' ' -f 2)
+
+	i=1
+	while [ $i -le $numCols ]
+	do
+		#initialize
+		sum=0
+		count=0
+
+		#cut a column
+		cut -f "$i" $1 > $tempCol
+		
+		#feed column into while loop to sum and increment counter
+		while read line
+		do
+			sum=$(expr $sum + $line)
+			count=$(expr $count + 1)
+		done <$tempCol
+
+		#Using expr here was a pain, so I opted for arithmetic expansion syntax
+		#mean=$(expr ( $sum + ($count / 2)*( ($sum>0)*2-1 )) / $count)
+		#calculate mean, this formula includes rounding for positive and negative numbers.
+		mean=$(((sum + (count / 2)*( (sum>0)*2-1 )) / count))
+
+		echo "$mean" >> $tempMean
+
+		i=$(expr $i + 1)
+	done
+
+	#convert mean column file to row
+	cat $tempMean | tr "\n" "\t" > $tempRow
+
+	#remove last tab
+	line=`cat $tempRow`
+	line=${line%?}
+	echo "$line" > $tempRow
+
+	cat $tempRow
+
+	rm -f "tempcolfile$$"
+	rm -f "tempmeanfile$$"
+	rm -f "temprowfile$$"
+	rm -f "datafile$$"
+	exit 0
+}
+
+#----------------------------------------------------------
+# Function:		add()
+# Description:	Takes as input two matrices via files and
+# outputs the sum of the matrices. This function first checks
+# that both input matrices have the same dimensions. It 
+# calculates the sum by converting both matrices into a single
+# column file, then rebuilding the matrix after adding each element.
+#----------------------------------------------------------
+add()
+{
+	dimsOne="tempdimsfileone$$"
+	dimsTwo="tempdimsfiletwo$$"
+	matrixCol1="tempcol1$$"
+	matrixCol2="tempcol2$$"
+	tempSum="tempsumfile$$"
+
+	#here we call dims and store the results in the dims temp files
+	dims $1 > $dimsOne
+	dims $2 > $dimsTwo
+
+	#compare the dimensions, exit with error if not the same
+	if ! cmp "$dimsOne" "$dimsTwo" > /dev/null
+	then
+		echo "Matrices must have the same dimensions." 1>&2
+		rm -f "tempdimsfileone$$"
+		rm -f "tempdimsfiletwo$$"
+		rm -f "datafileone$$"
+		rm -f "datafiletwo$$"
+		rm -f "tempcol1$$"
+		rm -f "tempcol2$$"
+		exit 1
+	fi
+
+	#call dims again and cut to get the number of columns.
+	numCols=$( dims $1 | cut -d ' ' -f 2)
+	lastElement=$(($numCols - 1))
+
+	#convert matrix files to a single column
+	cat $1 | tr "\t" "\n" > $matrixCol1
+	cat $2 | tr "\t" "\n" > $matrixCol2
+
+	#used to track column position
+	newLine=0
+
+	#initialize sum
+	sum=0
+
+	#using file descriptor 3 to read more than one file
+	while read matrix1 && read matrix2 <&3
+	do
+		#use shell built-in because it is faster
+		sum=$(( $matrix1 + $matrix2 ))
+		newLine=$(($newLine + 1))
+
+		#check for new row
+		if [ $newLine -lt $numCols ]
+		then
+			#print sum followed by tab without newline
+			echo -e -n "$sum\t" >> $tempSum
+		else
+			#print with no tab with newline
+			echo -e "$sum" >> $tempSum
+
+			#reset column position tracker
+			newLine=0
+		fi
+	done <$matrixCol1 3<$matrixCol2
+
+	cat $tempSum
+	
+	rm -f "tempdimsfileone$$"
+	rm -f "tempdimsfiletwo$$"
+	rm -f "datafileone$$"
+	rm -f "datafiletwo$$"
+	rm -f "tempcol1$$"
+	rm -f "tempcol2$$"
+	rm -f "tempsumfile$$"
+	exit 0
+}
+
+#----------------------------------------------------------
+# Function:		multiply()
+# Description:	Takes as input two matrices via files and
+# outputs the product of the two input matrices. This function
+# first checks that the two input matrices have the proper
+# dimensions for matrix multiplication. Using nested loops,
+# the function takes the row of the first matrix, converts it
+# to a column, then cuts each column of the second matrix to
+# calculate each dot product.
+#----------------------------------------------------------
+multiply()
+{
+	matrixCol1="tempcol1$$"
+	matrixCol2="tempcol2$$"
+	tempProduct="tempproductfile$$"
+
+	#store the dimension of each matrix in separate variables
+	row1=$( dims $1 | cut -d ' ' -f 1)
+	col1=$( dims $1 | cut -d ' ' -f 2)
+	row2=$( dims $2 | cut -d ' ' -f 1)
+	col2=$( dims $2 | cut -d ' ' -f 2)
+
+	#compare the dimensions, exit with error if not valid
+	if [ $col1 -ne $row2 ]
+	then
+		echo "Improper dimensions for matrix multiplication." 1>&2
+		rm -f "datafileone$$"
+		rm -f "datafiletwo$$"
+		rm -f "tempcol1$$"
+		rm -f "tempcol2$$"
+		exit 1
+	fi
+
+	#used to track column position
+	nextColumn=1
+
+	#using nested loops, take the row of the first matrix and multiply it by each
+	#column of the second matrix.
+	while read matrixRow1
+	do
+		#convert row to column from first matrix
+		echo "$matrixRow1" | tr '\t' '\n' > $matrixCol1
+
+		while [ $nextColumn -le $col2 ]
+		do
+			#cut a column from second matrix
+			cut -f "$nextColumn" $2 > $matrixCol2
+				
+			#initialize sum
+			productSum=0
+
+			#just like in add, we're going to read from the two column files at once
+			while read matrix1 && read matrix2 <&3
+			do
+				product=$((matrix1 * matrix2))
+				productSum=$((productSum + product))
+			done <$matrixCol1 3<$matrixCol2
+
+			#check for new row using same method as in add
+			
+			if [ $nextColumn -lt $col2 ]
+			then
+				#print product followed by tab without newline
+				echo -e -n "$productSum\t" >> $tempProduct
+			else
+				#print with no tab with newline
+				echo -e "$productSum" >> $tempProduct
+			fi
+
+			#increment column position tracker
+			nextColumn=$(($nextColumn + 1))
+		done
+
+	#reset column position tracker
+	nextColumn=1
+	done <$1
+
+	cat $tempProduct
+
+	rm -f "datafileone$$"
+	rm -f "datafiletwo$$"
+	rm -f "tempcol1$$"
+	rm -f "tempcol2$$"
+	rm -f "tempproductfile$$"
+	exit 0
+}
+
+#call main with all arguments passed to matrix
+main $@
