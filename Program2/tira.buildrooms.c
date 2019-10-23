@@ -1,15 +1,18 @@
-/*
-
-
-
-*/
-
+/************************************************************
+Assignment 2
+Name: Alexander Tir
+onid: tira
+Description: This programs build a random path of connected rooms for an
+adventure game. The program will output a file for each room that contains
+the room name, its connections, and the room type.
+************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define NUM_ROOMS 7
 #define MIN_CONNECT 3
@@ -34,7 +37,9 @@ struct Room
 	char* name;
 	enum roomType type;
 	int connections;
-	struct Room* roomConnections[MAX_CONNECT];
+	//I originally implemeneted this as an array of pointers to Room structs, but I realized that
+	//only a unique id for each room is necessary to indicate a connection.
+	int roomConnections[MAX_CONNECT];
 };
 
 //initialize an array of 10 hard-coded room names
@@ -52,7 +57,6 @@ char *roomNames[10] = {
 	"Temple"
 };
 
-
 // Returns true if all rooms have 3 to 6 outbound connections, false otherwise
 bool IsGraphFull(struct Room *roomList[])  
 {	
@@ -65,29 +69,6 @@ bool IsGraphFull(struct Room *roomList[])
 		}
 	}
 	return true;
-}
-
-// Adds a random, valid outbound connection from a Room to another Room
-void AddRandomConnection(struct Room *roomList[])  
-{
-	struct Room *A;  // Maybe a struct, maybe global arrays of ints
-	struct Room *B;
-
-  	while(true)
-  	{
-		A = GetRandomRoom(roomList);
-
-		if (CanAddConnectionFrom(A) == true)
-			break;
-  	}
-
-	do
-	{
-		B = GetRandomRoom(roomList);
-	}
-	while(CanAddConnectionFrom(B) == false || IsSameRoom(A, B) == true || ConnectionAlreadyExists(A, B) == true);
-
-	ConnectRoom(A, B);
 }
 
 // Returns a random Room, does NOT validate if connection can be added
@@ -146,9 +127,27 @@ bool IsSameRoom(struct Room *x, struct Room *y)
 	return false;
 }
 
-void RoomInit()
+// Adds a random, valid outbound connection from a Room to another Room
+void AddRandomConnection(struct Room *roomList[])  
 {
+	struct Room *A;  // Maybe a struct, maybe global arrays of ints
+	struct Room *B;
 
+  	while(true)
+  	{
+		A = GetRandomRoom(roomList);
+
+		if (CanAddConnectionFrom(A) == true)
+			break;
+  	}
+
+	do
+	{
+		B = GetRandomRoom(roomList);
+	}
+	while(CanAddConnectionFrom(B) == false || IsSameRoom(A, B) == true || ConnectionAlreadyExists(A, B) == true);
+
+	ConnectRoom(A, B);
 }
 
 //This function randomly assigns rooms using the first 7 elements of a shuffled array
@@ -184,15 +183,16 @@ void AssignRandomRoom(struct Room *roomList[])
 
 int main()
 {
+	int i;
+	int j;
+	int k;
+
 	//initialize random seed
 	srand(time(NULL));
-
-	
 
 	//initialize an array of pointers to Room structs
 	struct Room *roomList[NUM_ROOMS];
 
-	int i;
 	//allocate memory for each Room in roomList
 	for (i = 0; i < NUM_ROOMS; i++)
 	{
@@ -206,9 +206,8 @@ int main()
 		//assign id
 		roomList[i]->id = i;
 
-		//"Upside-down" is the longest room name, so max number of characters needed is 12
 		//Only allocating memory, not assigning a name yet
-		roomList[i]->name = calloc(12, sizeof(char));
+		roomList[i]->name = calloc(16, sizeof(char));
 
 		//starts at 0, will be incremented when a connection is added
 		roomList[i]->connections = 0;
@@ -231,25 +230,82 @@ int main()
 	//call function to randomly assign rooms
 	AssignRandomRoom(roomList);
 
-	// Randomly create all connections in graph
-	//while (IsGraphFull(roomList) == false)
-	//{
-	//	AddRandomConnection(roomList);
-	//}
+	//Randomly create all connections in graph
+	while (IsGraphFull(roomList) == false)
+	{
+		AddRandomConnection(roomList);
+	}
 
-	//struct Room *A;
-	//A = GetRandomRoom(roomList);
-	//printf("%d\n%s\n", A->id, A->name);
-	//roomList[2]->id = 0;
-	//printf("%d\n%s\n", A->id, A->name);
+	//get process id
+	int pid = getpid();
+	//define prefix for directory name
+	char *prefix = "tira.buildrooms.";
+	//create char buffer
+	char dirName[32];
+	//use sprintf to concat dirName
+	sprintf(dirName, "%s%d/", prefix, pid);
 
+	//use stat to check if directory exists first
+	struct stat st = {0};
+	if(stat(dirName, &st) == -1)
+	{
+		mkdir(dirName, 0777);
+	}
 
+	//initialize filepointer and fileName string
+	FILE *fp = NULL;
+	char fileName[64];
 
+	//Create files for each room, process one Room at a time
+	for (i = 0; i < NUM_ROOMS; i++)
+	{
+		//following the "name_room" format
+		sprintf(fileName, "%s%s_room", dirName, roomList[i]->name);
+		fp = fopen(fileName, "w+");
+
+		if (fp == NULL)
+		{
+			perror("Error opening file: ");
+		}
+
+		//write room name to file
+		fprintf(fp, "ROOM NAME: %s\n", roomList[i]->name);
+
+		//write connections to file
+		for (j = 0; j < roomList[i]->connections; j++)
+		{
+			//this isn't an ideal way of doing this, but iterate through the room connections until
+			//a match is found, then use the matching index print the name of that room
+			for (k = 0; k < NUM_ROOMS; k++)
+			{
+				if (roomList[i]->roomConnections[j] == roomList[k]->id)
+				{
+					fprintf(fp, "CONNECTION %d: %s\n", j + 1, roomList[k]->name);
+				}
+			}
+		}
+
+		//since I implemented them as enumerated data types, I'll have to use these multiple if statements
+		//for the room type...
+		if (roomList[i]->type == START_ROOM)
+		{
+			fprintf(fp, "ROOM TYPE: START_ROOM\n");
+		}
+		else if (roomList[i]->type == END_ROOM)
+		{
+			fprintf(fp, "ROOM TYPE: END_ROOM\n");
+		}
+		else
+		{
+			fprintf(fp, "ROOM TYPE: MID_ROOM\n");
+		}
+	}
+
+	//clean up allocated memory
 	for (i = 0; i < NUM_ROOMS; i++)
 	{
 		free(roomList[i]);
 	}
 
 	return 0;
-
 }
