@@ -4,7 +4,8 @@ Name: Alexander Tir
 onid: tira
 Description: This programs build a random path of connected rooms for an
 adventure game. The program will output a file for each room that contains
-the room name, its connections, and the room type.
+the room name, its connections, and the room type. We were given an outline
+of functions to use. These files will be stored in a uniquely named directory.
 ************************************************************/
 
 #include <stdio.h>
@@ -25,12 +26,14 @@ typedef enum {
 	true
 } bool;
 
+//The 3 room types
 enum roomType {
 	START_ROOM,
 	MID_ROOM,
 	END_ROOM
 };
 
+//Used to store information for a Room
 struct Room
 {
 	int id;
@@ -46,8 +49,8 @@ struct Room
 //decided to make it global since they are "hard-coded"
 char *roomNames[10] = {
 	"Night",
-	"Waterfall",
-	"Upside-down",
+	"River",
+	"Flipped",
 	"Bouncy",
 	"Garden",
 	"Puppy",
@@ -74,6 +77,7 @@ bool IsGraphFull(struct Room *roomList[])
 // Returns a random Room, does NOT validate if connection can be added
 struct Room *GetRandomRoom(struct Room *roomList[])
 {
+	//i modified this function to return a pointer
 	struct Room *random;
 	random = roomList[rand() % NUM_ROOMS];
 	return random;
@@ -145,6 +149,7 @@ void AddRandomConnection(struct Room *roomList[])
 	{
 		B = GetRandomRoom(roomList);
 	}
+	//perform all the checks before connecting rooms
 	while(CanAddConnectionFrom(B) == false || IsSameRoom(A, B) == true || ConnectionAlreadyExists(A, B) == true);
 
 	ConnectRoom(A, B);
@@ -181,6 +186,11 @@ void AssignRandomRoom(struct Room *roomList[])
 	}
 }
 
+//The main function. The array of pointers to Room structs is allocated here.
+//Rooms are randomly assigned using AssignRandomRoom() and connections are then
+//randomly added to each room until they are considered full.
+//Then, each room's information is stored in a file in a directory created using
+//the prefix "tira.buildrooms." + the process id.
 int main()
 {
 	int i;
