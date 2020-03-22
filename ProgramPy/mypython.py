@@ -9,6 +9,7 @@
 
 import string
 import random
+import sys
 
 stringLength = 10
 
@@ -36,7 +37,9 @@ for x in names:
 	fileName = x
 	# open in read mode
 	with open(fileName, 'r') as file:
-		print(file.read())
+		#we use sys.stdout.write to better satisfy the assignment
+		#using print will print an extra newline
+		sys.stdout.write(file.read())
 		file.close()
 
 # generate random integer in range 1 to 42 inclusive
