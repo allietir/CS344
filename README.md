@@ -1,5 +1,5 @@
 # CS344
-Private personal repository for OSU CS344
+A repository for my OSU CS344 Operating Systems coursework. Assignment descriptions below.
 
 ### Program 1
 This assignment involved writing basic bash shell scripts to compute matrix operations. The purose was to become familiar with the Unix shell, shell programming, Unit utilities, standard innput, output, and error, piplines, process ids, exit values, and signals.
